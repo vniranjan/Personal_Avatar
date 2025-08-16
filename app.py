@@ -78,14 +78,37 @@ class Me:
     def __init__(self):
         self.openai = OpenAI()
         self.name = "Niranjan"
-        reader = PdfReader("me/LI_profile.pdf")
+        
+        # Initialize with default values
         self.linkedin = ""
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                self.linkedin += text
-        with open("me/summary.txt", "r", encoding="utf-8") as f:
-            self.summary = f.read()
+        self.summary = ""
+        
+        # Try to load LinkedIn profile PDF
+        try:
+            reader = PdfReader("me/LI_profile.pdf")
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    self.linkedin += text
+            print("✅ Successfully loaded LinkedIn profile")
+        except FileNotFoundError:
+            print("⚠️ Warning: me/LI_profile.pdf not found. Using empty LinkedIn profile.")
+            self.linkedin = "LinkedIn profile information not available."
+        except Exception as e:
+            print(f"⚠️ Warning: Error reading LinkedIn profile: {e}")
+            self.linkedin = "LinkedIn profile information not available due to an error."
+        
+        # Try to load summary text
+        try:
+            with open("me/summary.txt", "r", encoding="utf-8") as f:
+                self.summary = f.read()
+            print("✅ Successfully loaded summary")
+        except FileNotFoundError:
+            print("⚠️ Warning: me/summary.txt not found. Using default summary.")
+            self.summary = "Professional summary information not available."
+        except Exception as e:
+            print(f"⚠️ Warning: Error reading summary: {e}")
+            self.summary = "Professional summary information not available due to an error."
 
 
     def handle_tool_call(self, tool_calls):
@@ -108,8 +131,18 @@ Be professional and engaging, as if talking to a potential client or future empl
 If you don't know the answer to any question, use your record_unknown_question tool to record the question that you couldn't answer, even if it's about something trivial or unrelated to career. \
 If the user is engaging in discussion, try to steer them towards getting in touch via email; ask for their email and record it using your record_user_details tool. "
 
-        system_prompt += f"\n\n## Summary:\n{self.summary}\n\n## LinkedIn Profile:\n{self.linkedin}\n\n"
-        system_prompt += f"With this context, please chat with the user, always staying in character as {self.name}."
+        # Add context information, handling cases where files might be missing
+        if self.summary and self.summary != "Professional summary information not available.":
+            system_prompt += f"\n\n## Summary:\n{self.summary}"
+        else:
+            system_prompt += f"\n\n## Summary:\nProfessional summary information is not currently available. Please ask users to provide their email for more detailed information."
+        
+        if self.linkedin and self.linkedin != "LinkedIn profile information not available.":
+            system_prompt += f"\n\n## LinkedIn Profile:\n{self.linkedin}"
+        else:
+            system_prompt += f"\n\n## LinkedIn Profile:\nLinkedIn profile information is not currently available. Please ask users to provide their email for more detailed information."
+        
+        system_prompt += f"\n\nWith this context, please chat with the user, always staying in character as {self.name}."
         return system_prompt
     
     def chat(self, message, history):
