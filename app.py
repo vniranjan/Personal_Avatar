@@ -164,10 +164,25 @@ If the user is engaging in discussion, try to steer them towards getting in touc
 if __name__ == "__main__":
     me = Me()
     # For local deployment
-    gr.ChatInterface(me.chat, type="messages").launch()
+    gr.ChatInterface(me.chat, type="messages").launch(server_port=7860)
 else:
-    # For Vercel deployment
+    # For Azure deployment
     me = Me()
     app = gr.ChatInterface(me.chat, type="messages")
-    # Export the app for Vercel
-    app.launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", 7860)))
+    # Export the app for Azure
+    try:
+        port = int(os.environ.get("PORT", 7860))
+        app.launch(server_name="0.0.0.0", server_port=port)
+    except OSError as e:
+        print(f"⚠️ Port {port} is busy, trying alternative port...")
+        # Try alternative ports if the specified port is busy
+        for alt_port in [8000, 8001, 8002, 7860, 7861, 7862]:
+            try:
+                app.launch(server_name="0.0.0.0", server_port=alt_port)
+                print(f"✅ App started successfully on port {alt_port}")
+                break
+            except OSError:
+                continue
+        else:
+            print("❌ Could not find an available port. Please check your configuration.")
+            raise e
